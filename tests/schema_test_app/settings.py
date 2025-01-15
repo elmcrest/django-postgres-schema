@@ -5,7 +5,7 @@ DATABASES = {
     "default": {
         "ENGINE": "postgres_schema.engine",
         "NAME": "postgres_schema",
-        "HOST": "db",
+        "HOST": os.environ["POSTGRES_HOST"],
         "USER": "postgres",
         "PASSWORD": os.environ["POSTGRES_PASSWORD"],
         "TEST": {"SERIALIZE": False},

@@ -11,7 +11,7 @@ jobs:
       db:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: django
+          POSTGRES_DB: postgres_schema
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
@@ -37,6 +37,7 @@ jobs:
         run: uv run tox
         env:
           POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST: localhost
       # - name: Retrieve coverage
       #   run: uv run just get_coverage
       # - name: Create coverage badge

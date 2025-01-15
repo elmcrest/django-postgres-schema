@@ -43,6 +43,7 @@ legacy_tox_ini = """
         DJANGO_SETTINGS_MODULE=schema_test_app.settings
     pass_env =
         POSTGRES_PASSWORD
+        POSTGRES_HOST
 
     deps =
         django51: django==5.1.5

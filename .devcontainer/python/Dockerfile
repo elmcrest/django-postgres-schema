@@ -7,8 +7,6 @@ ARG USER_GID=$USER_UID
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8
 
-COPY python-versions.txt ./
-
 RUN apt-get update && \
     apt-get install -y locales curl git && \
     groupadd --gid $USER_GID $USERNAME && \
