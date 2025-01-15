@@ -30,9 +30,9 @@ jobs:
       - name: Install tox
         run: uv tool install tox --with tox-uv
       - name: lint
-        run: uv run ruff check postgres_schema/ tests/
+        run: uv run --extra dev ruff check postgres_schema/ tests/
       - name: format
-        run: uv run ruff format --check postgres_schema/ tests/
+        run: uv run --extra dev ruff format --check postgres_schema/ tests/
       - name: Run tests
         run: uv run tox
         env:
