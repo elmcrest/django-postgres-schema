@@ -38,16 +38,18 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_HOST: localhost
-      # - name: Retrieve coverage
-      #   run: uv run just get_coverage
-      # - name: Create coverage badge
-      #   uses: schneegans/dynamic-badges-action@v1.7.0
-      #   with:
-      #     auth: ${{ secrets.GIST_TOKEN_FOR_BADGES }}
-      #     gistID: 554745ce1e32d0eeb5d3cd799aceee37
-      #     filename: orcar-admin.json
-      #     label: coverage
-      #     message: ${{ env.COVERAGE }}
-      #     valColorRange: ${{ env.COVERAGE }}
-      #     minColorRange: 25
-      #     maxColorRange: 85%
+      - name: Retrieve coverage
+        run: |
+          COVERAGE=$(coverage report | grep TOTAL | awk '{print $NF}' | sed 's/%//')
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+      - name: Create coverage badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: fa3b7a390c6f18f66a41fbc73b349a3d
+          filename: django_postgres_schema.json
+          label: coverage
+          message: ${{ env.COVERAGE }}
+          valColorRange: ${{ env.COVERAGE }}
+          minColorRange: 25
+          maxColorRange: 85%
