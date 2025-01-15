@@ -40,9 +40,8 @@ jobs:
           POSTGRES_HOST: localhost
       - name: Retrieve coverage
         run: |
-          COVERAGE=$(coverage report | grep TOTAL | awk '{print $NF}' | sed 's/%//')
+          COVERAGE=$(uv run --extra dev coverage report | grep TOTAL | awk '{print $NF}')
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
-          echo $COVERAGE
       - name: Create coverage badge
         uses: schneegans/dynamic-badges-action@v1.7.0
         with:
