@@ -1,0 +1,52 @@
+name: Test django-postgres-schema
+
+on: push
+
+jobs:
+  test:
+    name: Test django-postgres-schema
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: django
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          version: "latest"
+      - name: Install tox
+        run: uv tool install tox --with tox-uv
+      - name: lint
+        run: uv run ruff check postgres_schema/ tests/
+      - name: format
+        run: uv run ruff format --check postgres_schema/ tests/
+      - name: Run tests
+        run: uv run tox
+        env:
+          POSTGRES_PASSWORD: postgres
+      # - name: Retrieve coverage
+      #   run: uv run just get_coverage
+      # - name: Create coverage badge
+      #   uses: schneegans/dynamic-badges-action@v1.7.0
+      #   with:
+      #     auth: ${{ secrets.GIST_TOKEN_FOR_BADGES }}
+      #     gistID: 554745ce1e32d0eeb5d3cd799aceee37
+      #     filename: orcar-admin.json
+      #     label: coverage
+      #     message: ${{ env.COVERAGE }}
+      #     valColorRange: ${{ env.COVERAGE }}
+      #     minColorRange: 25
+      #     maxColorRange: 85%

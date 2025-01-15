@@ -1,10 +1,11 @@
-from django.db import connection, models, migrations
+from django.db import connection, migrations, models
 from django.db.migrations.migration import Migration
 from django.db.migrations.state import ProjectState
 from django.test import TestCase
 from django.test.utils import isolate_apps
+
 from postgres_schema.models import get_schema_model
-from postgres_schema.schema import activate_schema, deactivate_schema
+from postgres_schema.schema import activate_schema
 
 Schema = get_schema_model()
 

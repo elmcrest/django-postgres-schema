@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-postgres-schema"
+version = "0.0.3"
+description = "Postgres schemas in Django."
+authors = [
+    { name = "Lex Berezhny", email = "lex@damoti.com" },
+    { name = "Marius Räsener", email = "marius@raesener.de" },
+]
+license = { text = "Apache-2.0" }
+keywords = ["django", "postgres", "schema"]
+classifiers = [
+    "Framework :: Django",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["django>=4.2.18", "psycopg[binary]"]
+
+[project.urls]
+Homepage = "https://github.com/elmcrest/django-postgres-schema"
+Repository = "https://github.com/elmcrest/django-postgres-schema"
+
+[project.optional-dependencies]
+dev = ["coverage>=7.6.10", "ruff>=0.9.1"]
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    envlist = py{310,311,312}-django{51,50,42}-psycopg{2,3}
+
+    [testenv]
+    setenv =
+        PYTHONPATH={toxinidir}/tests
+        DJANGO_SETTINGS_MODULE=schema_test_app.settings
+    pass_env =
+        POSTGRES_PASSWORD
+
+    deps =
+        django51: django==5.1.5
+        django50: django==5.0.11
+        django42: django==4.2.18
+
+        psycopg2: psycopg2-binary
+        psycopg3: psycopg[binary]
+    
+        coverage
+
+    commands =
+        coverage run -p --source={envsitepackagesdir}/postgres_schema {envbindir}/django-admin test --noinput schema_test_app
+        coverage combine
+"""
