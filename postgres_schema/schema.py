@@ -1,86 +1,106 @@
 import sys
+
 from django.conf import settings
 from django.db import connection
-from django.db.backends.postgresql.schema import DatabaseSchemaEditor as PostgreSQLSchemaEditor
+from django.db.backends.postgresql.schema import (
+    DatabaseSchemaEditor as PostgreSQLSchemaEditor,
+)
 
 
 def is_tenant_model(model):
-    if model._meta.app_label in settings.POSTGRES_SCHEMA_TENANTS:
-        return True
-    if model._meta.label in settings.POSTGRES_SCHEMA_TENANTS:
-        return True
-    return False
+    schema_apps = settings.POSTGRES_SCHEMA_APPS
+    if isinstance(schema_apps, str):
+        schema_apps = [schema_apps]
+
+    app_label = model._meta.app_label
+
+    return any(
+        app_label == app.split(".")[0] if "." in app else app_label == app
+        for app in schema_apps
+    )
 
 
 def create_schema(schema_name):
     with connection.cursor() as cursor:
-        cursor.execute("SELECT clone_schema(%s, %s)", (
-            settings.POSTGRES_TEMPLATE_SCHEMA, schema_name,
-        ))
+        cursor.execute(
+            "SELECT clone_schema(%s, %s)",
+            (
+                settings.POSTGRES_SCHEMA_TEMPLATE,
+                schema_name,
+            ),
+        )
 
 
 def schema_exists(schema_name):
     with connection.cursor() as cursor:
-        cursor.execute("SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s", (schema_name,))
+        cursor.execute(
+            "SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s",
+            (schema_name,),
+        )
         return bool(cursor.fetchone())
 
 
 def activate_schema(schema_name, exclude_public=False):
     with connection.cursor() as cursor:
-        if schema_name == settings.POSTGRES_PUBLIC_SCHEMA or exclude_public:
+        if schema_name == settings.POSTGRES_SCHEMA_PUBLIC or exclude_public:
             cursor.execute("SET search_path TO %s", (schema_name,))
         else:
-            cursor.execute("SET search_path TO %s, %s", (
-                schema_name, settings.POSTGRES_PUBLIC_SCHEMA,
-            ))
+            cursor.execute(
+                "SET search_path TO %s, %s",
+                (
+                    schema_name,
+                    settings.POSTGRES_SCHEMA_PUBLIC,
+                ),
+            )
 
 
 def deactivate_schema():
-    activate_schema(settings.POSTGRES_PUBLIC_SCHEMA)
+    activate_schema(settings.POSTGRES_SCHEMA_PUBLIC)
 
 
 def get_active_schema_name():
     with connection.cursor() as cursor:
-        cursor.execute('SELECT current_schema()')
+        cursor.execute("SELECT current_schema()")
         return cursor.fetchone()
 
 
 def wrap(name):
-
     def _apply_to_all(self, model, *args, **kwargs):
         from .models import get_schema_model
 
-        verbosity = kwargs.pop('verbosity', 1)
-        if model._meta.label == 'migrations.Migration':
+        verbosity = kwargs.pop("verbosity", 1)
+        if model._meta.label == "migrations.Migration":
             # there is no otherway to silence Migration creation
             verbosity = 0
 
         if not self.wrapped:
-            return getattr(super(DatabaseSchemaEditor, self), name)(model, *args, **kwargs)
+            return getattr(super(DatabaseSchemaEditor, self), name)(
+                model, *args, **kwargs
+            )
 
         method = getattr(self, name)
 
         if verbosity >= 1:
-            sys.stdout.write('\n    {a:<16} {m._meta.label:<25}'.format(a=name, m=model))
+            sys.stdout.write(f"\n    {name:<16} {model._meta.label:<25}")
 
         if not is_tenant_model(model):
             self.wrapped = False
             if verbosity >= 1:
-                sys.stdout.write(' ')
-                sys.stdout.write(settings.POSTGRES_PUBLIC_SCHEMA)
+                sys.stdout.write(" ")
+                sys.stdout.write(settings.POSTGRES_SCHEMA_PUBLIC)
                 sys.stdout.flush()
             result = method(model, *args, **kwargs)
             self.wrapped = True
             return result
 
-        schema_names = [settings.POSTGRES_TEMPLATE_SCHEMA]
-        schema_names.extend(get_schema_model().objects.values_list('schema', flat=True))
+        schema_names = [settings.POSTGRES_SCHEMA_TEMPLATE]
+        schema_names.extend(get_schema_model().objects.values_list("schema", flat=True))
         result = None
         for schema in schema_names:
             self.activate_schema(schema)
             self.wrapped = False
             if verbosity >= 1:
-                sys.stdout.write(' ')
+                sys.stdout.write(" ")
                 sys.stdout.write(schema)
                 sys.stdout.flush()
             result = method(model, *args, **kwargs)
@@ -92,16 +112,15 @@ def wrap(name):
 
 
 class DatabaseSchemaEditor(PostgreSQLSchemaEditor):
-
-    column_sql = wrap('column_sql')
-    create_model = wrap('create_model')
-    delete_model = wrap('delete_model')
-    alter_unique_together = wrap('alter_unique_together')
-    alter_index_together = wrap('alter_index_together')
-    alter_db_table = wrap('alter_db_table')
-    add_field = wrap('add_field')
-    remove_field = wrap('remove_field')
-    alter_field = wrap('alter_field')
+    column_sql = wrap("column_sql")
+    create_model = wrap("create_model")
+    delete_model = wrap("delete_model")
+    alter_unique_together = wrap("alter_unique_together")
+    alter_index_together = wrap("alter_index_together")
+    alter_db_table = wrap("alter_db_table")
+    add_field = wrap("add_field")
+    remove_field = wrap("remove_field")
+    alter_field = wrap("alter_field")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -110,11 +129,13 @@ class DatabaseSchemaEditor(PostgreSQLSchemaEditor):
     def __enter__(self):
         super().__enter__()
         self.schema_deferred_sql = {}
-        self.activate_schema(settings.POSTGRES_PUBLIC_SCHEMA)
+        self.activate_schema(settings.POSTGRES_SCHEMA_PUBLIC)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.deferred_sql = self.schema_deferred_sql.pop(settings.POSTGRES_PUBLIC_SCHEMA, [])
+        self.deferred_sql = self.schema_deferred_sql.pop(
+            settings.POSTGRES_SCHEMA_PUBLIC, []
+        )
         if exc_type is None:
             for schema_name, sql in self.schema_deferred_sql.items():
                 activate_schema(schema_name)
@@ -134,11 +155,18 @@ class DatabaseSchemaEditor(PostgreSQLSchemaEditor):
         self.deferred_sql = self.schema_deferred_sql.setdefault(self.schema_name, [])
 
     def deactivate_schema(self):
-        self.activate_schema(settings.POSTGRES_PUBLIC_SCHEMA)
+        self.activate_schema(settings.POSTGRES_SCHEMA_PUBLIC)
 
-    def _constraint_names(self, model, column_names=None, unique=None,
-                          primary_key=None, index=None, foreign_key=None,
-                          check=None):
+    def _constraint_names(
+        self,
+        model,
+        column_names=None,
+        unique=None,
+        primary_key=None,
+        index=None,
+        foreign_key=None,
+        check=None,
+    ):
         """
         Returns all constraint names matching the columns and conditions
         """
@@ -147,16 +175,16 @@ class DatabaseSchemaEditor(PostgreSQLSchemaEditor):
             constraints = get_constraints(cursor, model._meta.db_table)
         result = []
         for name, infodict in constraints.items():
-            if column_names is None or column_names == infodict['columns']:
-                if unique is not None and infodict['unique'] != unique:
+            if column_names is None or column_names == infodict["columns"]:
+                if unique is not None and infodict["unique"] != unique:
                     continue
-                if primary_key is not None and infodict['primary_key'] != primary_key:
+                if primary_key is not None and infodict["primary_key"] != primary_key:
                     continue
-                if index is not None and infodict['index'] != index:
+                if index is not None and infodict["index"] != index:
                     continue
-                if check is not None and infodict['check'] != check:
+                if check is not None and infodict["check"] != check:
                     continue
-                if foreign_key is not None and not infodict['foreign_key']:
+                if foreign_key is not None and not infodict["foreign_key"]:
                     continue
                 result.append(name)
 
@@ -170,7 +198,8 @@ def get_constraints(cursor, table_name):
     constraints = {}
     # Loop over the key table, collecting things as constraints
     # This will get PKs, FKs, and uniques, but not CHECK
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT
             kc.constraint_name,
             kc.column_name,
@@ -187,7 +216,9 @@ def get_constraints(cursor, table_name):
             kc.table_schema = current_schema() AND
             kc.table_name = %s
         ORDER BY kc.ordinal_position ASC
-    """, [table_name])
+    """,
+        [table_name],
+    )
     for constraint, column, kind, used_cols in cursor.fetchall():
         # If we're the first column, make the record
         if constraint not in constraints:
@@ -195,14 +226,17 @@ def get_constraints(cursor, table_name):
                 "columns": [],
                 "primary_key": kind.lower() == "primary key",
                 "unique": kind.lower() in ["primary key", "unique"],
-                "foreign_key": tuple(used_cols[0].split(".", 1)) if kind.lower() == "foreign key" else None,
+                "foreign_key": tuple(used_cols[0].split(".", 1))
+                if kind.lower() == "foreign key"
+                else None,
                 "check": False,
                 "index": False,
             }
         # Record the details
-        constraints[constraint]['columns'].append(column)
+        constraints[constraint]["columns"].append(column)
     # Now get CHECK constraint columns
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT kc.constraint_name, kc.column_name
         FROM information_schema.constraint_column_usage AS kc
         JOIN information_schema.table_constraints AS c ON
@@ -213,7 +247,9 @@ def get_constraints(cursor, table_name):
             c.constraint_type = 'CHECK' AND
             kc.table_schema = current_schema() AND
             kc.table_name = %s
-    """, [table_name])
+    """,
+        [table_name],
+    )
     for constraint, column in cursor.fetchall():
         # If we're the first column, make the record
         if constraint not in constraints:
@@ -226,9 +262,10 @@ def get_constraints(cursor, table_name):
                 "index": False,
             }
         # Record the details
-        constraints[constraint]['columns'].append(column)
+        constraints[constraint]["columns"].append(column)
     # Now get indexes
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT
             c2.relname,
             ARRAY(
@@ -244,7 +281,9 @@ def get_constraints(cursor, table_name):
             AND n.oid = c.relnamespace
             AND n.nspname = current_schema()
             AND c.relname = %s
-    """, [table_name])
+    """,
+        [table_name],
+    )
     for index, columns, unique, primary in cursor.fetchall():
         if index not in constraints:
             constraints[index] = {

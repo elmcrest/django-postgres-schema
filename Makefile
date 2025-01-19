@@ -1,10 +1,8 @@
-.PHONY: test clean release
-
 test:
-	tox
+	uv run tox
 
 clean:
-	rm -rf build dist django_postgres_schema.egg-info
+	rm -rf build dist .venv .tox build django_postgres_schema.egg-info
 
-release:
-	python setup.py sdist bdist_wheel upload
+# release:
+# 	python setup.py sdist bdist_wheel upload

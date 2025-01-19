@@ -4,3 +4,8 @@ __pycache__/
 .coverage
 .tox
 dist
+
+.ruff_cache
+.venv
+.env
+.envrc

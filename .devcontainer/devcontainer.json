@@ -5,26 +5,14 @@
     ],
     "service": "python",
     "workspaceFolder": "/app",
-    "extensions": [
-        // "ms-python.python",
-        // "batisteo.vscode-django",
-        "donjayamanne.python-extension-pack",
-        "jhartell.vscode-line-endings",
-        "sauravmanoj.django-template-snippets",
-        "shakram02.bash-beautify",
-        "coolbear.systemd-unit-file"
-    ],
-    "runArgs": [
-        "-u",
-        "vscode"
-    ],
-    "settings": {
-        "terminal.integrated.shell.linux": "/bin/bash",
-        "python.pythonPath": "/usr/local/bin/python",
-        "python.linting.pylintEnabled": true,
-        "python.linting.pylintPath": "/usr/local/bin/pylint",
-        "python.linting.enabled": true
-    },
-    "shutdownAction": "stopCompose",
-    "postCreateCommand": "mkdir -p ~/.ssh && cp -r ~/.ssh-localhost/* ~/.ssh && chmod 700 ~/.ssh && chmod 600 ~/.ssh/*"
+    "remoteUser": "vscode",
+    "postCreateCommand": "uv sync --extra dev && uv tool install tox --with tox-uv",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "charliermarsh.ruff",
+                "tamasfe.even-better-toml"
+            ]
+        }
+    }
 }

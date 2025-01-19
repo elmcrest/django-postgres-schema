@@ -35,7 +35,7 @@ BEGIN
     buffer := dest_schema || '.' || object;
 
     -- create table
-    EXECUTE 'CREATE TABLE ' || buffer || ' (LIKE ' || source_schema || '.' || object || ' INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING DEFAULTS)';
+    EXECUTE 'CREATE TABLE ' || buffer || ' (LIKE ' || source_schema || '.' || object || ' INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING DEFAULTS INCLUDING IDENTITY)';
 
     -- fix sequence defaults
     FOR column_, default_ IN

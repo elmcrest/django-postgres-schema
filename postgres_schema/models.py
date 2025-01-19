@@ -2,16 +2,17 @@ from threading import local
 
 from django.apps import apps as django_apps
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
-from django.db.models import query, manager
-from django.forms import ValidationError
-from django.utils.translation import ugettext_lazy as _
-from django.core.exceptions import ImproperlyConfigured
+from django.db.models import manager, query
+from django.utils.translation import gettext_lazy as _
 
 from .schema import (
-    create_schema, schema_exists,
-    activate_schema, deactivate_schema,
+    activate_schema,
+    create_schema,
+    deactivate_schema,
+    schema_exists,
 )
 
 
@@ -20,17 +21,20 @@ def get_schema_model():
     Returns the schema model that is active in this project.
     """
     try:
-        return django_apps.get_model(settings.POSTGRES_SCHEMA_MODEL, require_ready=False)
+        return django_apps.get_model(
+            settings.POSTGRES_SCHEMA_MODEL, require_ready=False
+        )
     except ValueError:
-        raise ImproperlyConfigured("POSTGRES_SCHEMA_MODEL must be of the form 'app_label.model_name'")
+        raise ImproperlyConfigured(
+            "POSTGRES_SCHEMA_MODEL must be of the form 'app_label.model_name'"
+        )
     except LookupError:
         raise ImproperlyConfigured(
-            "POSTGRES_SCHEMA_MODEL refers to model '%s' that has not been installed" % settings.POSTGRES_SCHEMA_MODEL
+            f"POSTGRES_SCHEMA_MODEL refers to model '{settings.POSTGRES_SCHEMA_MODEL}' that has not been installed"
         )
 
 
 class SchemaQuerySet(models.query.QuerySet):
-
     def active(self):
         return self.filter(is_active=True)
 
@@ -42,6 +46,13 @@ class SchemaQuerySet(models.query.QuerySet):
 
     def activate(self, pk):
         self.get(pk=pk).activate()
+
+    def create(self, **kwargs):
+        if "schema" not in kwargs:
+            raise ValidationError(
+                "The 'schema' argument is required when creating a new instance"
+            )
+        return super().create(**kwargs)
 
 
 _active = local()
@@ -57,28 +68,34 @@ class AbstractSchema(models.Model):
     """
 
     SCHEMA_NAME_VALIDATOR_MESSAGE = (
-        'May only contain lowercase letters, digits, underscores and dashes. '
-        'Must start with a letter.'
+        "May only contain lowercase letters, digits, underscores and dashes. "
+        "Must start with a letter."
     )
 
-    schema = models.CharField(max_length=36, primary_key=True, unique=True,
-        validators=[RegexValidator(
-            regex='^[a-z][a-z0-9_\-]*$',
-            message=_(SCHEMA_NAME_VALIDATOR_MESSAGE)
-        )],
-        help_text='<br>'.join([
-            'The internal name of the schema.',
-            SCHEMA_NAME_VALIDATOR_MESSAGE,
-            'May not be changed after creation.',
-        ]),
+    schema = models.CharField(
+        max_length=36,
+        primary_key=True,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex="^[a-z][a-z0-9_-]*$", message=_(SCHEMA_NAME_VALIDATOR_MESSAGE)
+            )
+        ],
+        help_text="<br>".join(
+            [
+                "The internal name of the schema.",
+                SCHEMA_NAME_VALIDATOR_MESSAGE,
+                "May not be changed after creation.",
+            ]
+        ),
     )
 
-    name = models.CharField(max_length=128, unique=True,
-        help_text=_('The display name of the schema.')
+    name = models.CharField(
+        max_length=128, unique=True, help_text=_("The display name of the schema.")
     )
 
-    is_active = models.BooleanField(default=True,
-        help_text=_('Use this instead of deleting schema.')
+    is_active = models.BooleanField(
+        default=True, help_text=_("Use this instead of deleting schema.")
     )
 
     objects = SchemaQuerySet.as_manager()
@@ -91,23 +108,25 @@ class AbstractSchema(models.Model):
         self._initial_schema = self.schema
 
     def __repr__(self):
-        return '%s (%s)' % (self.name, self.schema)
+        return "%s (%s)" % (self.name, self.schema)
 
     def save(self, *args, **kwargs):
+        if self.schema in (
+            settings.POSTGRES_SCHEMA_PUBLIC,
+            settings.POSTGRES_SCHEMA_TEMPLATE,
+        ):
+            raise ValidationError(_("Schema %s is not editable") % self.schema)
 
-        if self.schema in (settings.POSTGRES_PUBLIC_SCHEMA, settings.POSTGRES_TEMPLATE_SCHEMA):
-            raise ValidationError(_('Schema %s is not editable') % self.schema)
-
-        self._meta.get_field('schema').run_validators(self.schema)
+        self._meta.get_field("schema").run_validators(self.schema)
 
         if self._state.adding:
             if self.schema_exists():
-                raise ValidationError(_('Schema %s already in use') % self.schema)
+                raise ValidationError(_("Schema %s already in use") % self.schema)
             else:
                 self.create_schema()
 
         elif self.schema != self._initial_schema:
-            raise ValidationError(_('may not change schema after creation.'))
+            raise ValidationError(_("may not change schema after creation."))
 
         return super().save(*args, **kwargs)
 
@@ -140,17 +159,16 @@ class SchemaAwareModel(models.Model):
         abstract = True
 
     def __eq__(self, other):
-        if not hasattr(self, '_schema'):
+        if not hasattr(self, "_schema"):
             raise ImproperlyConfigured(
-                "SchemaAwareModel must be created by a SchemaAwareManager."
-                .format(self.__class__.__name__)
+                f"SchemaAwareModel must be created by a SchemaAwareManager. {self.__class__.__name__}"
             )
         return super().__eq__(other) and self._schema == other._schema
 
 
 class SchemaAwareBaseManager(manager.BaseManager):
     def get_queryset(self):
-        return super().get_queryset().annotate(_schema='current_schema()')
+        return super().get_queryset().annotate(_schema="current_schema()")
 
 
 class SchemaAwareManager(SchemaAwareBaseManager.from_queryset(query.QuerySet)):

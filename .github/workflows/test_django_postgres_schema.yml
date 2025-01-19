@@ -1,0 +1,59 @@
+name: Test django-postgres-schema
+
+on: push
+
+jobs:
+  test:
+    name: Test django-postgres-schema
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres_schema
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_PORT: 5432
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          version: "latest"
+      - name: Install tox
+        run: uv tool install tox --with tox-uv
+      - name: lint
+        run: uv run --extra dev ruff check postgres_schema/ tests/
+      - name: format
+        run: uv run --extra dev ruff format --check postgres_schema/ tests/
+      - name: Run tests
+        run: uv run tox
+        env:
+          POSTGRES_DB: postgres_schema
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_PORT: 5432
+      - name: Retrieve coverage
+        run: |
+          COVERAGE=$(uv run --extra dev coverage report | grep TOTAL | awk '{print $NF}')
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+      - name: Create coverage badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: fa3b7a390c6f18f66a41fbc73b349a3d
+          filename: django_postgres_schema.json
+          label: coverage
+          message: ${{ env.COVERAGE }}
+          valColorRange: ${{ env.COVERAGE }}
+          minColorRange: 25
+          maxColorRange: 85

@@ -1,10 +1,12 @@
-from django.db import connection, models, migrations
+from django.core.exceptions import ValidationError
+from django.db import connection, migrations, models
 from django.db.migrations.migration import Migration
 from django.db.migrations.state import ProjectState
 from django.test import TestCase
 from django.test.utils import isolate_apps
-from postgres_schema.models import get_schema_model
-from postgres_schema.schema import activate_schema, deactivate_schema
+
+from postgres_schema.models import AbstractSchema, get_schema_model
+from postgres_schema.schema import activate_schema
 
 Schema = get_schema_model()
 
@@ -110,7 +112,7 @@ class MigrationTest(TestCase):
                 ],
             )
         ]
-        with self.settings(POSTGRES_SCHEMA_TENANTS=["tests"]):
+        with self.settings(POSTGRES_SCHEMA_APPS=["tests"]):
             with connection.schema_editor() as editor:
                 migration.apply(ProjectState(), editor)
 
@@ -118,3 +120,51 @@ class MigrationTest(TestCase):
         self.assertTableNotExists("tests_address")
         activate_schema("__template__", exclude_public=True)
         self.assertTableExists("tests_address")
+
+
+@isolate_apps("schema_test_app", attr_name="apps")
+class SchemaQuerySetTest(TestCase):
+    def setUp(self):
+        from django.db import models
+
+        class TestModel(AbstractSchema):
+            name = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "schema_test_app"
+
+        # Create the table using migrations
+        migration = Migration("name", "schema_test_app")
+        migration.operations = [
+            migrations.CreateModel(
+                "TestModel",
+                [
+                    ("id", models.AutoField(primary_key=True)),
+                    ("name", models.CharField(max_length=100)),
+                    ("schema", models.CharField(max_length=100)),
+                    ("is_active", models.BooleanField(default=True)),
+                ],
+            )
+        ]
+
+        with connection.schema_editor() as editor:
+            migration.apply(ProjectState(), editor)
+
+    def test_create_requires_schema(self):
+        TestModel = self.apps.get_model("schema_test_app", "TestModel")
+
+        # Activate the public schema first
+        activate_schema("public")
+
+        # Should work with schema provided
+        instance = TestModel.objects.create(name="test", schema="test_schema")
+        self.assertEqual(instance.schema, "test_schema")
+
+        # Should raise ValueError when schema is missing
+        with self.assertRaises(ValidationError) as context:
+            TestModel.objects.create(name="test")
+
+        self.assertEqual(
+            context.exception.message,
+            "The 'schema' argument is required when creating a new instance",
+        )

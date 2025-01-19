@@ -1,1 +1,1 @@
-default_app_config = 'postgres_schema.apps.PostgresSchemaConfig'
+default_app_config = "postgres_schema.apps.PostgresSchemaConfig"
