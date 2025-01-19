@@ -6,7 +6,7 @@
     "service": "python",
     "workspaceFolder": "/app",
     "remoteUser": "vscode",
-    "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+    "postCreateCommand": "uv sync --extra dev && uv tool install tox --with tox-uv",
     "customizations": {
         "vscode": {
             "extensions": [

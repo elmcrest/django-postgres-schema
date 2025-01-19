@@ -62,7 +62,7 @@ class Command(MigrateCommand):
             ):
                 with connection.schema_editor() as editor:
                     editor.execute(
-                        "CREATE SCHEMA {}".format(settings.POSTGRES_TEMPLATE_SCHEMA)
+                        "CREATE SCHEMA {}".format(settings.POSTGRES_SCHEMA_TEMPLATE)
                     )
                     statements = editor.connection.ops.prepare_sql_script(CLONE_SCHEMA)
                     for statement in statements:

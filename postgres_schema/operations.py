@@ -1,5 +1,7 @@
 import sys
+
 from django.conf import settings
+
 from .models import get_schema_model
 
 Schema = get_schema_model()
@@ -26,16 +28,16 @@ class RunInSchemas:
 
         if self.public:
             sys.stdout.write(" ")
-            sys.stdout.write(settings.POSTGRES_PUBLIC_SCHEMA)
+            sys.stdout.write(settings.POSTGRES_SCHEMA_PUBLIC)
             sys.stdout.flush()
-            schema_editor.activate_schema(settings.POSTGRES_PUBLIC_SCHEMA)
+            schema_editor.activate_schema(settings.POSTGRES_SCHEMA_PUBLIC)
             method(app_label, schema_editor, from_state, to_state)
 
         if self.template:
             sys.stdout.write(" ")
-            sys.stdout.write(settings.POSTGRES_TEMPLATE_SCHEMA)
+            sys.stdout.write(settings.POSTGRES_SCHEMA_TEMPLATE)
             sys.stdout.flush()
-            schema_editor.activate_schema(settings.POSTGRES_TEMPLATE_SCHEMA)
+            schema_editor.activate_schema(settings.POSTGRES_SCHEMA_TEMPLATE)
             method(app_label, schema_editor, from_state, to_state)
 
         for schema in self.schemas:

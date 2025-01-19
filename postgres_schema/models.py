@@ -106,8 +106,8 @@ class AbstractSchema(models.Model):
 
     def save(self, *args, **kwargs):
         if self.schema in (
-            settings.POSTGRES_PUBLIC_SCHEMA,
-            settings.POSTGRES_TEMPLATE_SCHEMA,
+            settings.POSTGRES_SCHEMA_PUBLIC,
+            settings.POSTGRES_SCHEMA_TEMPLATE,
         ):
             raise ValidationError(_("Schema %s is not editable") % self.schema)
 

@@ -1,10 +1,11 @@
 from django.db import connection, migrations, models
-from django.db.utils import ProgrammingError
 from django.db.migrations.state import ProjectState
+from django.db.utils import ProgrammingError
 from django.test import TestCase, override_settings
 from django.test.utils import isolate_apps
 
 from postgres_schema.operations import RunInSchemas
+
 from .models import Company
 
 
@@ -22,7 +23,9 @@ class MigrationTestCase(TestCase):
 
 @isolate_apps("schema_test_app", attr_name="apps")
 @override_settings(
-    POSTGRES_SCHEMA_TENANTS="schema_test_app.Person",
+    POSTGRES_SCHEMA_APPS=[
+        "schema_test_app.Person",
+    ]
 )
 class RunInSchemaTests(MigrationTestCase):
     create_model = migrations.CreateModel(

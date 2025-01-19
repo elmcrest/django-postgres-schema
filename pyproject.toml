@@ -30,7 +30,7 @@ Homepage = "https://github.com/elmcrest/django-postgres-schema"
 Repository = "https://github.com/elmcrest/django-postgres-schema"
 
 [project.optional-dependencies]
-dev = ["coverage>=7.6.10", "ruff>=0.9.1"]
+dev = ["coverage>=7.6.10", "pytest-django>=4.9.0", "ruff>=0.9.1"]
 
 [tool.tox]
 legacy_tox_ini = """
@@ -42,8 +42,11 @@ legacy_tox_ini = """
         PYTHONPATH={toxinidir}/tests
         DJANGO_SETTINGS_MODULE=schema_test_app.settings
     pass_env =
-        POSTGRES_PASSWORD
+        POSTGRES_DB
         POSTGRES_HOST
+        POSTGRES_USER
+        POSTGRES_PASSWORD
+        POSTGRES_PORT
 
     deps =
         django51: django==5.1.5

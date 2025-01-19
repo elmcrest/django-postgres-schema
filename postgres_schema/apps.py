@@ -13,7 +13,7 @@ class PostgresSchemaConfig(AppConfig):
 
 
 class DefaultSettings:
-    POSTGRES_SCHEMA_PUBLIC_SCHEMA = "public"
-    POSTGRES_SCHEMA_TEMPLATE_SCHEMA = "__template__"
+    POSTGRES_SCHEMA_PUBLIC = "public"
+    POSTGRES_SCHEMA_TEMPLATE = "__template__"
     POSTGRES_SCHEMA_MODEL = None
     POSTGRES_SCHEMA_APPS = []

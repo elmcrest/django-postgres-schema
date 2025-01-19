@@ -9,6 +9,8 @@ services:
       - db
     env_file:
       - .env
+    environment:
+      - POSTGRES_HOST: db
   db:
     image: postgres:17-alpine
     ports:

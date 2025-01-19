@@ -4,10 +4,11 @@ INSTALLED_APPS = ("postgres_schema", "schema_test_app")
 DATABASES = {
     "default": {
         "ENGINE": "postgres_schema.engine",
-        "NAME": "postgres_schema",
+        "NAME": os.environ["POSTGRES_DB"],
         "HOST": os.environ["POSTGRES_HOST"],
-        "USER": "postgres",
+        "USER": os.environ["POSTGRES_USER"],
         "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+        "PORT": os.environ["POSTGRES_PORT"],
         "TEST": {"SERIALIZE": False},
     }
 }

@@ -8,9 +8,9 @@ from django.db.backends.postgresql.schema import (
 
 
 def is_tenant_model(model):
-    if model._meta.app_label in settings.POSTGRES_SCHEMA_TENANTS:
+    if model._meta.app_label in settings.POSTGRES_SCHEMA_APPS:
         return True
-    if model._meta.label in settings.POSTGRES_SCHEMA_TENANTS:
+    if model._meta.label in settings.POSTGRES_SCHEMA_APPS:
         return True
     return False
 
@@ -20,7 +20,7 @@ def create_schema(schema_name):
         cursor.execute(
             "SELECT clone_schema(%s, %s)",
             (
-                settings.POSTGRES_TEMPLATE_SCHEMA,
+                settings.POSTGRES_SCHEMA_TEMPLATE,
                 schema_name,
             ),
         )
@@ -37,20 +37,20 @@ def schema_exists(schema_name):
 
 def activate_schema(schema_name, exclude_public=False):
     with connection.cursor() as cursor:
-        if schema_name == settings.POSTGRES_PUBLIC_SCHEMA or exclude_public:
+        if schema_name == settings.POSTGRES_SCHEMA_PUBLIC or exclude_public:
             cursor.execute("SET search_path TO %s", (schema_name,))
         else:
             cursor.execute(
                 "SET search_path TO %s, %s",
                 (
                     schema_name,
-                    settings.POSTGRES_PUBLIC_SCHEMA,
+                    settings.POSTGRES_SCHEMA_PUBLIC,
                 ),
             )
 
 
 def deactivate_schema():
-    activate_schema(settings.POSTGRES_PUBLIC_SCHEMA)
+    activate_schema(settings.POSTGRES_SCHEMA_PUBLIC)
 
 
 def get_active_schema_name():
@@ -76,21 +76,19 @@ def wrap(name):
         method = getattr(self, name)
 
         if verbosity >= 1:
-            sys.stdout.write(
-                "\n    {a:<16} {m._meta.label:<25}".format(a=name, m=model)
-            )
+            sys.stdout.write(f"\n    {name:<16} {model._meta.label:<25}")
 
         if not is_tenant_model(model):
             self.wrapped = False
             if verbosity >= 1:
                 sys.stdout.write(" ")
-                sys.stdout.write(settings.POSTGRES_PUBLIC_SCHEMA)
+                sys.stdout.write(settings.POSTGRES_SCHEMA_PUBLIC)
                 sys.stdout.flush()
             result = method(model, *args, **kwargs)
             self.wrapped = True
             return result
 
-        schema_names = [settings.POSTGRES_TEMPLATE_SCHEMA]
+        schema_names = [settings.POSTGRES_SCHEMA_TEMPLATE]
         schema_names.extend(get_schema_model().objects.values_list("schema", flat=True))
         result = None
         for schema in schema_names:
@@ -126,12 +124,12 @@ class DatabaseSchemaEditor(PostgreSQLSchemaEditor):
     def __enter__(self):
         super().__enter__()
         self.schema_deferred_sql = {}
-        self.activate_schema(settings.POSTGRES_PUBLIC_SCHEMA)
+        self.activate_schema(settings.POSTGRES_SCHEMA_PUBLIC)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.deferred_sql = self.schema_deferred_sql.pop(
-            settings.POSTGRES_PUBLIC_SCHEMA, []
+            settings.POSTGRES_SCHEMA_PUBLIC, []
         )
         if exc_type is None:
             for schema_name, sql in self.schema_deferred_sql.items():
@@ -152,7 +150,7 @@ class DatabaseSchemaEditor(PostgreSQLSchemaEditor):
         self.deferred_sql = self.schema_deferred_sql.setdefault(self.schema_name, [])
 
     def deactivate_schema(self):
-        self.activate_schema(settings.POSTGRES_PUBLIC_SCHEMA)
+        self.activate_schema(settings.POSTGRES_SCHEMA_PUBLIC)
 
     def _constraint_names(
         self,

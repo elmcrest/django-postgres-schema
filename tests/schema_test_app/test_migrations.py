@@ -111,7 +111,7 @@ class MigrationTest(TestCase):
                 ],
             )
         ]
-        with self.settings(POSTGRES_SCHEMA_TENANTS=["tests"]):
+        with self.settings(POSTGRES_SCHEMA_APPS=["tests"]):
             with connection.schema_editor() as editor:
                 migration.apply(ProjectState(), editor)
 
