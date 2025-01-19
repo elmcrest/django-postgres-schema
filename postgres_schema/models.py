@@ -2,11 +2,10 @@ from threading import local
 
 from django.apps import apps as django_apps
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import manager, query
-from django.forms import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from .schema import (
@@ -47,6 +46,13 @@ class SchemaQuerySet(models.query.QuerySet):
 
     def activate(self, pk):
         self.get(pk=pk).activate()
+
+    def create(self, **kwargs):
+        if "schema" not in kwargs:
+            raise ValidationError(
+                "The 'schema' argument is required when creating a new instance"
+            )
+        return super().create(**kwargs)
 
 
 _active = local()

@@ -8,11 +8,16 @@ from django.db.backends.postgresql.schema import (
 
 
 def is_tenant_model(model):
-    if model._meta.app_label in settings.POSTGRES_SCHEMA_APPS:
-        return True
-    if model._meta.label in settings.POSTGRES_SCHEMA_APPS:
-        return True
-    return False
+    schema_apps = settings.POSTGRES_SCHEMA_APPS
+    if isinstance(schema_apps, str):
+        schema_apps = [schema_apps]
+
+    app_label = model._meta.app_label
+
+    return any(
+        app_label == app.split(".")[0] if "." in app else app_label == app
+        for app in schema_apps
+    )
 
 
 def create_schema(schema_name):
