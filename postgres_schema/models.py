@@ -4,7 +4,7 @@ from django.apps import apps as django_apps
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import RegexValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import manager, query
 from django.utils.translation import gettext_lazy as _
 
@@ -12,6 +12,7 @@ from .schema import (
     activate_schema,
     create_schema,
     deactivate_schema,
+    delete_schema,
     schema_exists,
 )
 
@@ -42,7 +43,12 @@ class SchemaQuerySet(models.query.QuerySet):
         return self.filter(is_active=False)
 
     def delete(self):
-        self.update(is_active=False)
+        with transaction.atomic():
+            schemas = list(self.values_list("schema", flat=True))
+            result = super().delete()
+            for schema in schemas:
+                delete_schema(schema)
+            return result
 
     def activate(self, pk):
         self.get(pk=pk).activate()
@@ -131,8 +137,11 @@ class AbstractSchema(models.Model):
         return super().save(*args, **kwargs)
 
     def delete(self, using=None, keep_parents=False):
-        self.is_active = False
-        self.save()
+        self.delete_schema()
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def delete_schema(self):
+        delete_schema(self.schema)
 
     def create_schema(self):
         create_schema(self.schema)
@@ -143,6 +152,12 @@ class AbstractSchema(models.Model):
     def activate(self):
         activate_schema(self.schema)
         _active.schema = self
+
+    def url(self, request):
+        port = ""
+        if ":" in request.META["HTTP_HOST"]:
+            port = ":" + request.META["HTTP_HOST"].split(":")[1]
+        return request.scheme + "://" + self.schema + "." + settings.SERVER_NAME + port
 
     @staticmethod
     def deactivate():

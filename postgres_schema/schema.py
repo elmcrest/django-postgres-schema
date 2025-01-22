@@ -31,6 +31,16 @@ def create_schema(schema_name):
         )
 
 
+def delete_schema(schema_name):
+    if schema_name in (
+        settings.POSTGRES_SCHEMA_PUBLIC,
+        settings.POSTGRES_SCHEMA_TEMPLATE,
+    ):
+        raise ValueError("Cannot delete protected schemas")
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT delete_schema(%s)", (schema_name,))
+
+
 def schema_exists(schema_name):
     with connection.cursor() as cursor:
         cursor.execute(

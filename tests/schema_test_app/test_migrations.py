@@ -121,6 +121,26 @@ class MigrationTest(TestCase):
         activate_schema("__template__", exclude_public=True)
         self.assertTableExists("tests_address")
 
+    def test_clone_tenant_schema(self):
+        migration = Migration("name", "tests")
+        migration.operations = [
+            migrations.CreateModel(
+                "Address",
+                [
+                    ("id", models.AutoField(primary_key=True)),
+                    ("street", models.TextField()),
+                ],
+            )
+        ]
+        with self.settings(POSTGRES_SCHEMA_APPS=["tests"]):
+            with connection.schema_editor() as editor:
+                migration.apply(ProjectState(), editor)
+
+        activate_schema("public")
+        self.assertTableNotExists("tests_address")
+        activate_schema("__template__", exclude_public=True)
+        self.assertTableExists("tests_address")
+
 
 @isolate_apps("schema_test_app", attr_name="apps")
 class SchemaQuerySetTest(TestCase):
@@ -150,21 +170,31 @@ class SchemaQuerySetTest(TestCase):
         with connection.schema_editor() as editor:
             migration.apply(ProjectState(), editor)
 
+        self.model = TestModel
+
     def test_create_requires_schema(self):
-        TestModel = self.apps.get_model("schema_test_app", "TestModel")
+        # TestModel = self.apps.get_model("schema_test_app", "TestModel")
 
         # Activate the public schema first
         activate_schema("public")
 
         # Should work with schema provided
-        instance = TestModel.objects.create(name="test", schema="test_schema")
+        instance = self.model.objects.create(name="test", schema="test_schema")
         self.assertEqual(instance.schema, "test_schema")
 
         # Should raise ValueError when schema is missing
         with self.assertRaises(ValidationError) as context:
-            TestModel.objects.create(name="test")
+            self.model.objects.create(name="test")
 
         self.assertEqual(
             context.exception.message,
             "The 'schema' argument is required when creating a new instance",
         )
+
+    def test_delete_schema(self):
+        self.model.objects.create(name="test", schema="delete_test")
+        self.assertTrue(self.model.objects.filter(schema="delete_test").exists())
+
+        # # Test deletion
+        self.model.objects.get(schema="delete_test").delete()
+        self.assertFalse(self.model.objects.filter(schema="delete_test").exists())

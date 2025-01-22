@@ -36,3 +36,44 @@ POSTGRES_SCHEMA_APPS = (
     "inventory",
 )
 ```
+
+## makemigrations
+by default postgres_schema wraps migration operations according to your settings.py but it's advised to check them manually to be sure things are applied as expected.
+
+### for tenant apps
+To run migrations in the template schema (by default named `__template__`) you'll have to wrap operations in `RunInTemplate`. This also runs the migrations in existing Schemas.
+```python
+# ...
+from postgres_schema.operations import RunInTemplate
+
+
+class Migration(migrations.Migration):
+    initial = True
+
+    dependencies = []
+
+    operations = [
+        RunInTemplate(
+            migrations.CreateModel(
+#...
+```
+
+### for public apps
+For the initial schema defining model or any other "public" model, wrap in `RunInPublic` like so:
+```python
+#...
+from postgres_schema.operations import RunInPublic
+
+
+class Migration(migrations.Migration):
+    initial = True
+
+    dependencies = [
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        RunInPublic(
+            migrations.CreateModel(
+#...
+```

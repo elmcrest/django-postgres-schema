@@ -1,6 +1,11 @@
 import os
 
-INSTALLED_APPS = ("postgres_schema", "schema_test_app")
+INSTALLED_APPS = (
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "postgres_schema",
+    "schema_test_app",
+)
 DATABASES = {
     "default": {
         "ENGINE": "postgres_schema.engine",

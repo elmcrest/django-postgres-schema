@@ -6,10 +6,12 @@ from django.conf import settings
 from django.core.management.commands.migrate import Command as MigrateCommand
 from django.db import router, transaction
 
-with open(
-    os.path.join(os.path.dirname(__file__), "..", "..", "sql", "clone_schema.001.sql")
-) as fp:
-    CLONE_SCHEMA = fp.read()
+SQL_FUNCTIONS = ""
+for sql_function in ["clone_schema.001.sql", "delete_schema.001.sql"]:
+    with open(
+        os.path.join(os.path.dirname(__file__), "..", "..", "sql", sql_function)
+    ) as fp:
+        SQL_FUNCTIONS += fp.read()
 
 
 class Command(MigrateCommand):
@@ -64,7 +66,7 @@ class Command(MigrateCommand):
                     editor.execute(
                         "CREATE SCHEMA {}".format(settings.POSTGRES_SCHEMA_TEMPLATE)
                     )
-                    statements = editor.connection.ops.prepare_sql_script(CLONE_SCHEMA)
+                    statements = editor.connection.ops.prepare_sql_script(SQL_FUNCTIONS)
                     for statement in statements:
                         editor.execute(statement, params=None)
 

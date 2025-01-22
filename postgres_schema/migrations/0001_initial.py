@@ -1,11 +1,12 @@
 import os
+from pathlib import Path
 
 from django.db import migrations
 
-with open(
-    os.path.join(os.path.dirname(__file__), "..", "sql", "clone_schema.001.sql")
-) as fp:
-    CLONE_SCHEMA = fp.read()
+SQL_FUNCTIONS = list()
+for sql_function in ["clone_schema.001.sql", "delete_schema.001.sql"]:
+    with open((Path(__file__) / ".." / ".." / "sql" / sql_function).resolve()) as fp:
+        SQL_FUNCTIONS.append(fp.read())
 
 
 class Migration(migrations.Migration):
@@ -20,7 +21,10 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL(
-            sql=CLONE_SCHEMA, reverse_sql="DROP FUNCTION clone_schema(text, text)"
+            sql=SQL_FUNCTIONS[0], reverse_sql="DROP FUNCTION clone_schema(text, text)"
+        ),
+        migrations.RunSQL(
+            sql=SQL_FUNCTIONS[1], reverse_sql="DROP FUNCTION delete_schema(text)"
         ),
         migrations.RunSQL(
             sql="CREATE SCHEMA IF NOT EXISTS __template__",

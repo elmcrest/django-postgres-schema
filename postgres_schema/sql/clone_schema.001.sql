@@ -69,11 +69,3 @@ BEGIN
 END;
  
 $$ LANGUAGE plpgsql VOLATILE;
-
-
---- drop function if exists from old function definition
-DROP FUNCTION IF EXISTS clone_schema(
-  source_schema   text,
-  dest_schema     text,
-  include_records boolean
-)
